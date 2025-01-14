@@ -2,13 +2,15 @@ import random
 import os
 from datetime import datetime
 import mysql.connector
-import AccountManagement
-import Loan
+from AccountManagement import AccountManagement
+from Loan import Loan
+from Connector import Connector
 class TransactionManager:
-    def __init__(self):
-        self.am = AccountManagement()  # Assuming this is defined elsewhere
+    def __init__(self,customer_management):
+        self.am = AccountManagement(customer_management)  # Assuming this is defined elsewhere
         self.loan = Loan()  # Assuming this is defined elsewhere
-        self.sc = input
+        print("Trans")
+        self.sc = input #??
         self.pin = None
         self.to_cid = None
         self.from_cid = None
@@ -16,12 +18,7 @@ class TransactionManager:
         self.balance = None
         self.amount = None
         self.acc_no = None
-        self.con = mysql.connector.connect(
-            host="localhost",
-            user="root", 
-            password="your_password", 
-            database="your_database"
-        )
+        self.con = Connector().get_connection()
         self.ps = None
 
     def with_draw(self):

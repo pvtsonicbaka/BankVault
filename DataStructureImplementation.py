@@ -1,5 +1,10 @@
 import mysql.connector
 from collections import deque
+import logging
+from Connector import Connector
+# Set up logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 class Loan:
     def __init__(self, loan_id, name, credit, status):
@@ -7,6 +12,7 @@ class Loan:
         self.name = name
         self.credit = credit
         self.status = status
+
 
 class DataStructureImplementation:
     def __init__(self):
@@ -21,15 +27,13 @@ class DataStructureImplementation:
 
     def connect_to_db(self):
         try:
-            connection = mysql.connector.connect(
-                host="localhost",
-                user="your_user",
-                password="your_password",
-                database="your_database"
-            )
+            connection = Connector().get_connection()
+            
+            
+            logging.info("Connected to database successfully.")
             return connection
         except mysql.connector.Error as e:
-            print(f"Database connection error: {e}")
+            logging.error(f"Database connection error: {e}")
             exit()
 
     # Stack Operations
@@ -68,15 +72,16 @@ class DataStructureImplementation:
             for row in cursor.fetchall():
                 loan = Loan(row[0], row[1], row[2], row[3])
                 self.insert(loan)
+            logging.info("Loan list set successfully.")
         except mysql.connector.Error as e:
-            print(f"Error fetching loans: {e}")
+            logging.error(f"Error fetching loans: {e}")
 
     def generate_list(self):
         try:
             with open("Top_Customer_for_Loan_Approval.txt", "w") as file:
                 current = self.head
                 if not current:
-                    print("No customer eligible for loan")
+                    print("No customers eligible for loan")
                     return
                 while current:
                     file.write(f"Customer ID: {current.loan.id}\n")
@@ -84,8 +89,9 @@ class DataStructureImplementation:
                     file.write(f"Credit Score: {current.loan.credit}\tStatus: {current.loan.status}\n")
                     file.write("--------------------------------------------------------------\n\n")
                     current = current.next
+            logging.info("Loan list successfully generated.")
         except Exception as e:
-            print(f"Error writing to file: {e}")
+            logging.error(f"Error writing to file: {e}")
 
     # Passbook Operations
     def load_passbook(self, acc):
@@ -101,21 +107,37 @@ class DataStructureImplementation:
                         date = parts[5]
                         self.push(f"Date: {date}\nAccount Number: {account_no}\t{sign}{amount}")
 
-                while True:
-                    print("1 - View Transaction History")
-                    print("2 - Retrieve and Delete Latest Transaction")
-                    print("3 - Exit")
-                    choice = input("Enter Your Choice: ")
-
-                    if choice == "1":
-                        self.display()
-                    elif choice == "2":
-                        print("---------------------------------------------------")
-                        print(self.pop())
-                        print("---------------------------------------------------")
-                    elif choice == "3":
-                        break
-                    else:
-                        print("Invalid Input")
+                self.passbook_menu()
         except FileNotFoundError:
             print("No Transaction Done Yet")
+        except Exception as e:
+            logging.error(f"Error loading passbook: {e}")
+
+    def passbook_menu(self):
+        while True:
+            print("1 - View Transaction History")
+            print("2 - Retrieve and Delete Latest Transaction")
+            print("3 - Exit")
+            choice = input("Enter Your Choice: ")
+
+            if choice == "1":
+                self.display()
+            elif choice == "2":
+                print("---------------------------------------------------")
+                print(self.pop())
+                print("---------------------------------------------------")
+            elif choice == "3":
+                break
+            else:
+                print("Invalid Input")
+
+
+# Example Usage
+if __name__ == "__main__":
+    dsi = DataStructureImplementation()
+    # Load loan data into linked list
+    dsi.set_list()
+    # Generate loan approval list
+    dsi.generate_list()
+    # Load passbook for account number 12345
+    dsi.load_passbook(12345)

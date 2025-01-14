@@ -7,9 +7,9 @@ class Connector:
         self.host = "localhost"
         self.database = "fakebank"
         self.user = "root"
-        self.password = ""
+        self.password = ""  # Update with your MySQL root password if required
         self.con = None
-        
+
     def connect(self):
         try:
             self.con = mysql.connector.connect(
@@ -19,14 +19,24 @@ class Connector:
                 password=self.password,
             )
             if self.con.is_connected():
-                print("Connected to Database Successfully")
+                print("✅ Connected to Database Successfully")
             else:
-                print("db not connection")
+                print("❌ Connection to database failed!")
         except Error as e:
-            print(f"Error while connecting to MySQL: {e}")
+            print(f"⚠️ Error while connecting to MySQL: {e}")
 
     def get_connection(self):
         if self.con is None or not self.con.is_connected():
+            print("🔄 Reconnecting to the database...")
             self.connect()
-        print(self.con)
         return self.con
+
+
+# Test your Connector class
+if __name__ == "__main__":
+    connector = Connector()
+    connection = connector.get_connection()
+    if connection:
+        print("✅ Connection object ready to use.")
+    else:
+        print("❌ Could not establish a connection.")

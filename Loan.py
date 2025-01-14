@@ -1,4 +1,6 @@
 import mysql.connector
+from Connector import Connector
+
 
 class Loan:
     def __init__(self):
@@ -12,13 +14,8 @@ class Loan:
 
     def connect_to_db(self):
         try:
-            connection = mysql.connector.connect(
-                host="localhost",
-                user="your_user",
-                password="your_password",
-                database="your_database"
-            )
-            return connection
+            connector = Connector()
+            return connector.get_connection()
         except mysql.connector.Error as e:
             print(f"Database connection error: {e}")
             exit()
@@ -29,8 +26,9 @@ class Loan:
 
             # Calling stored procedure for setting data
             cursor.callproc('setData', [accno])
-            self.id = cursor.fetchall()[0][1]
-            self.name = cursor.fetchall()[0][2]
+            result = cursor.fetchall()
+            self.id = result[0][1]
+            self.name = result[0][2]
 
             # Fetch count of transactions
             cursor.callproc('getCount', [self.id])
@@ -40,32 +38,33 @@ class Loan:
             cursor.callproc('getBalance', [self.id])
             self.update_balance = cursor.fetchall()[0][1]
 
+            # Evaluate credit and status
             if self.count <= 1:
                 self.credit = 0
                 self.status = "Not Eligible"
                 self.insert_data()
             else:
-                if self.count >= 10:
-                    self.credit = 5
-                elif self.count >= 5:
-                    if self.update_balance >= 5000:
-                        self.credit = 4
-                    else:
-                        self.credit = 3
-                else:
-                    if self.update_balance >= 5000:
-                        self.credit = 2
-                    else:
-                        self.credit = 1
-
-                if self.credit >= 3:
-                    self.status = "Eligible"
-                else:
-                    self.status = "Not Eligible"
+                self.evaluate_credit_and_status()
                 self.update_data()
 
         except mysql.connector.Error as e:
             print(f"Error in setting data: {e}")
+
+    def evaluate_credit_and_status(self):
+        if self.count >= 10:
+            self.credit = 5
+        elif self.count >= 5:
+            if self.update_balance >= 5000:
+                self.credit = 4
+            else:
+                self.credit = 3
+        else:
+            if self.update_balance >= 5000:
+                self.credit = 2
+            else:
+                self.credit = 1
+
+        self.status = "Eligible" if self.credit >= 3 else "Not Eligible"
 
     def insert_data(self):
         try:
@@ -73,7 +72,7 @@ class Loan:
             sql = "INSERT INTO loan (cid, name, credit_score, status) VALUES (%s, %s, %s, %s)"
             cursor.execute(sql, (self.id, self.name, self.credit, self.status))
             self.con.commit()
-            print("Success")
+            print("Data inserted successfully")
         except mysql.connector.Error as e:
             print(f"Error in inserting data: {e}")
 
@@ -83,12 +82,18 @@ class Loan:
             sql = "UPDATE loan SET credit_score = %s, status = %s WHERE cid = %s"
             cursor.execute(sql, (self.credit, self.status, self.id))
             self.con.commit()
+            print("Data updated successfully")
         except mysql.connector.Error as e:
             print(f"Error in updating data: {e}")
 
     def get_status(self):
         try:
-            checkid = int(input("Enter Customer ID: "))
+            checkid = input("Enter Customer ID: ")
+            if not checkid.isdigit():
+                print("Invalid Customer ID")
+                return
+            checkid = int(checkid)
+
             cursor = self.con.cursor()
             sql = "SELECT * FROM loan WHERE cid = %s"
             cursor.execute(sql, (checkid,))

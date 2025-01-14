@@ -1,9 +1,12 @@
 import mysql.connector
-import random
-import Connector
+import random 
+from Connector import Connector
+from CustomerManagement import CustomerManagement
+
 
 class AccountManagement:
-    def __init__(self):
+    def __init__(self, customer_management):
+        self.customer_management = customer_management
         self.con = self.connect_to_db()
         self.cursor = self.con.cursor(dictionary=True)
         self.acc_balance = {}
@@ -18,16 +21,20 @@ class AccountManagement:
     def generate_numeric_account_id(self):
         return ''.join(str(random.randint(0, 9)) for _ in range(12))
 
+    def generate_unique_account_id(self):
+        while True:
+            accno = self.generate_numeric_account_id()
+            self.cursor.execute("SELECT accno FROM account WHERE accno = %s", (accno,))
+            if not self.cursor.fetchone():
+                return accno
+
     def check_balance(self):
         while True:
-            try:
-                balance = input("Enter Amount: ")
-                if balance.isdigit():
-                    return float(balance)
-                else:
-                    print("Invalid amount. Please enter a numeric value.")
-            except ValueError:
-                print("Invalid input.")
+            balance = input("Enter Amount: ")
+            if balance.isdigit():
+                return float(balance)
+            else:
+                print("Invalid amount. Please enter a numeric value.")
 
     def check_pin(self):
         while True:
@@ -42,13 +49,13 @@ class AccountManagement:
 
     def get_acc_id(self):
         self.hsacc.clear()
-        self.cursor.execute("SELECT * FROM account")
+        self.cursor.execute("SELECT accno, PIN FROM account")
         for row in self.cursor.fetchall():
             self.hsacc[row['accno']] = row['PIN']
 
     def set_balance(self):
         self.acc_balance.clear()
-        self.cursor.execute("SELECT * FROM account")
+        self.cursor.execute("SELECT accno, Balance FROM account")
         for row in self.cursor.fetchall():
             self.acc_balance[row['accno']] = row['Balance']
 
@@ -56,25 +63,30 @@ class AccountManagement:
         try:
             self.get_acc_id()
             cid = int(input("Enter ID Number: "))
-            if cid in CustomerManagement.hscid:  # Assuming `CustomerManagement.hscid` is a valid set/dict
+            if cid in self.customer_management.hscid:
                 while True:
-                    ch = int(input("1-Saving \t 2-Current: "))
-                    if ch == 1:
+                    ch = input("1-Saving \t 2-Current: ")
+                    if ch == "1":
                         self.type = "Saving"
                         break
-                    elif ch == 2:
+                    elif ch == "2":
                         self.type = "Current"
                         break
                     else:
                         print("Invalid choice.")
-                
+
                 balance = self.check_balance()
                 pin = self.check_pin()
-                accno = self.generate_numeric_account_id()
+                accno = self.generate_unique_account_id()
+
                 sql = "INSERT INTO account (accno, c_id, Balance, Type, PIN) VALUES (%s, %s, %s, %s, %s)"
                 self.cursor.execute(sql, (accno, cid, balance, self.type, pin))
                 self.con.commit()
-                print("Account Added Successfully")
+
+                if self.cursor.rowcount > 0:
+                    print("Account Added Successfully")
+                else:
+                    print("Failed to Add Account")
             else:
                 print("ID Not Found.")
         except Exception as e:
@@ -142,5 +154,3 @@ class AccountManagement:
                 print("Invalid Account Number")
         except Exception as e:
             print(f"Error: {e}")
-
-

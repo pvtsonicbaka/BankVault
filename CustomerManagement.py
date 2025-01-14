@@ -6,10 +6,15 @@ from Connector import Connector
 
 class CustomerManagement:
     def __init__(self):
-        db_connector = Connector()
-        self.con = db_connector.get_connection()
-        self.cursor = self.con.cursor(dictionary=True)
-        self.hscid = set()
+        try:
+            db_connector = Connector()
+            self.con = db_connector.get_connection()
+            self.cursor = self.con.cursor(dictionary=True)
+            self.hscid = set()
+        except AttributeError:
+            print("Error: Connector class is not implemented correctly.")
+        except Error as e:
+            print(f"Database Connection Error: {e}")
 
     def add_customer(self):
         try:
@@ -47,9 +52,14 @@ class CustomerManagement:
             name = input("Enter Name of Customer: ")
             if self.check_name(name):
                 password = input("Enter Password: ")
-                cid = int(input("Enter ID Number: "))
+                cid = input("Enter ID Number: ")
+
+                if not cid.isdigit():
+                    print("Invalid ID. It should be numeric.")
+                    return
+
                 sql = """DELETE FROM customer WHERE cname = %s AND cpass = %s AND cid = %s"""
-                self.cursor.execute(sql, (name, password, cid))
+                self.cursor.execute(sql, (name, password, int(cid)))
                 self.con.commit()
 
                 if self.cursor.rowcount > 0:
@@ -66,7 +76,13 @@ class CustomerManagement:
     def update_customer(self):
         try:
             self.get_ids()
-            cid = int(input("Enter ID Number: "))
+            cid = input("Enter ID Number: ")
+
+            if not cid.isdigit():
+                print("Invalid ID. It should be numeric.")
+                return
+
+            cid = int(cid)
             if cid in self.hscid:
                 name = input("Enter Name: ")
                 if self.check_name(name):
@@ -112,9 +128,9 @@ class CustomerManagement:
     def check_age(self):
         while True:
             age = input("Enter Age: ")
-            if age.isdigit():
-                return age
-            print("Invalid Age. It should be a numeric value.")
+            if age.isdigit() and 18 <= int(age) <= 100:
+                return int(age)
+            print("Invalid Age. It should be a numeric value between 18 and 100.")
 
     def select_gender(self):
         while True:
@@ -129,14 +145,10 @@ class CustomerManagement:
             print("Invalid choice. Please select a valid option.")
 
     def get_ids(self):
-        self.hscid.clear()
-        self.cursor.execute("SELECT cid FROM customer")
-        for row in self.cursor.fetchall():
-            self.hscid.add(row["cid"])
-
-
-# Example Usage:
-# cm = CustomerManagement()
-# cm.add_customer()
-# cm.delete_customer()
-# cm.update_customer()
+        try:
+            self.hscid.clear()
+            self.cursor.execute("SELECT cid FROM customer")
+            for row in self.cursor.fetchall():
+                self.hscid.add(row["cid"])
+        except Error as e:
+            print(f"Error fetching IDs: {e}")
