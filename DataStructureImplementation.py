@@ -15,26 +15,15 @@ class Loan:
 
 
 class DataStructureImplementation:
-    def __init__(self):
+    def __init__(self, connection):
         self.head = None
         self.stack = deque()
-        self.db_connection = self.connect_to_db()
+        self.db_connection = connection
 
     class Node:
         def __init__(self, loan):
             self.loan = loan
             self.next = None
-
-    def connect_to_db(self):
-        try:
-            connection = Connector().get_connection()
-            
-            
-            logging.info("Connected to database successfully.")
-            return connection
-        except mysql.connector.Error as e:
-            logging.error(f"Database connection error: {e}")
-            exit()
 
     # Stack Operations
     def push(self, data):
@@ -93,6 +82,12 @@ class DataStructureImplementation:
         except Exception as e:
             logging.error(f"Error writing to file: {e}")
 
+    def display_loans(self):
+        current = self.head
+        while current:
+            print(f"Loan ID: {current.loan.id}, Name: {current.loan.name}, Credit: {current.loan.credit}, Status: {current.loan.status}")
+            current = current.next
+
     # Passbook Operations
     def load_passbook(self, acc):
         try:
@@ -134,7 +129,9 @@ class DataStructureImplementation:
 
 # Example Usage
 if __name__ == "__main__":
-    dsi = DataStructureImplementation()
+    connector = Connector()
+    connection = connector.get_connection()
+    dsi = DataStructureImplementation(connection)
     # Load loan data into linked list
     dsi.set_list()
     # Generate loan approval list

@@ -5,12 +5,13 @@ import mysql.connector
 from AccountManagement import AccountManagement
 from Loan import Loan
 from Connector import Connector
+
 class TransactionManager:
-    def __init__(self,customer_management):
-        self.am = AccountManagement(customer_management)  # Assuming this is defined elsewhere
-        self.loan = Loan()  # Assuming this is defined elsewhere
+    def __init__(self, customer_management, connection):
+        self.am = AccountManagement(customer_management, connection)
+        self.loan = Loan(connection)
         print("Trans")
-        self.sc = input #??
+        self.sc = input
         self.pin = None
         self.to_cid = None
         self.from_cid = None
@@ -18,117 +19,140 @@ class TransactionManager:
         self.balance = None
         self.amount = None
         self.acc_no = None
-        self.con = Connector().get_connection()
+        self.con = connection
+        self.cursor = self.con.cursor(dictionary=True)
         self.ps = None
 
-    def with_draw(self):
-        self.am.getAccID()
+    def login(self):
         acc = input("Enter Account Number: ")
-        if self.am.checkAccount(acc):
-            if acc in self.am.hsacc:
-                self.pin = self.am.checkPIN()
-                if self.am.hsacc[acc] == self.pin:
+        if self.am.check_account(acc):
+            self.cursor.execute("SELECT PIN FROM account WHERE accno = %s", (acc,))
+            account = self.cursor.fetchone()
+            if account:
+                self.pin = self.am.check_pin()
+                if account['PIN'] == self.pin:
+                    return acc
+                else:
+                    print("Invalid PIN")
+            else:
+                print("Account Number Not Found")
+        else:
+            print("Invalid Account Number")
+        return None
+
+    def with_draw(self):
+        acc = self.login()
+        if acc:
+            try:
+                self.cursor.execute("SELECT Balance FROM account WHERE accno = %s", (acc,))
+                account = self.cursor.fetchone()
+                if account:
                     print("Set Amount to Withdraw")
-                    self.amount = self.am.checkBalance()
-                    balance = self.check_for_withdraw(acc)
+                    self.amount = self.am.check_balance()
+                    balance = account['Balance']
                     if balance >= self.amount:
                         new_balance = balance - self.amount
                         sql = "UPDATE account SET Balance=%s WHERE accno=%s"
                         self.ps = self.con.cursor()
                         self.ps.execute(sql, (new_balance, acc))
                         if self.ps.rowcount > 0:
-                            print(f"Rs:- {self.amount}/- Is Withdrawn Successfully")
                             formatted_date = datetime.now().strftime("%Y-%m-%d")
-                            self.make_passbook(acc, new_balance, formatted_date, "Withdraw", self.amount)
+                            transaction_id = self.generate_transaction_id()
+                            sql = "INSERT INTO transaction (transaction_ID, from_accNo, to_accNo, amount, Date) VALUES (%s, %s, %s, %s, %s)"
+                            self.ps.execute(sql, (transaction_id, acc, acc, -self.amount, formatted_date))
+                            if self.ps.rowcount > 0:
+                                self.con.commit() 
+                                print(f"Rs:- {self.amount}/- Is Withdrawn Successfully")
+                                print("Transaction recorded successfully")
+                            else:
+                                self.con.rollback()
+                                print("Failed to record transaction")
                         else:
+                            self.con.rollback()
                             print("Payment failed")
                     else:
                         print("Insufficient Balance to Withdraw")
-                else:
-                    print("Invalid PIN")
-            else:
-                print("Account Number Not Found")
-        else:
-            print("Invalid Account Number")
+            except mysql.connector.Error as e:
+                self.con.rollback()
+                print(f"An error occurred: {e}")
 
     def deposit(self):
-        self.am.getAccID()
-        acc = input("Enter Account Number: ")
-        if self.am.checkAccount(acc):
-            if acc in self.am.hsacc:
-                self.pin = self.am.checkPIN()
-                if self.am.hsacc[acc] == self.pin:
+        acc = self.login()
+        if acc:
+            try:
+                self.cursor.execute("SELECT Balance FROM account WHERE accno = %s", (acc,))
+                account = self.cursor.fetchone()
+                if account:
                     print("Set Amount to Deposit")
-                    self.amount = self.am.checkBalance()
-                    balance = self.check_for_withdraw(acc)
-                    new_balance = balance + self.amount
+                    self.amount = self.am.check_balance()
+                    new_balance = account['Balance'] + self.amount
                     sql = "UPDATE account SET Balance=%s WHERE accno=%s"
                     self.ps = self.con.cursor()
                     self.ps.execute(sql, (new_balance, acc))
                     if self.ps.rowcount > 0:
-                        print(f"Rs:- {self.amount}/- Is Deposited Successfully")
                         formatted_date = datetime.now().strftime("%Y-%m-%d")
-                        self.make_passbook(acc, new_balance, formatted_date, "Deposit", self.amount)
+                        transaction_id = self.generate_transaction_id()
+                        sql = "INSERT INTO transaction (transaction_ID, from_accNo, to_accNo, amount, Date) VALUES (%s, %s, %s, %s, %s)"
+                        self.ps.execute(sql, (transaction_id, acc, acc, self.amount, formatted_date))
+                        if self.ps.rowcount > 0:
+                            self.con.commit() 
+                            print(f"Rs:- {self.amount}/- Is Deposited Successfully")
+                            print("Transaction recorded successfully")
+                        else:
+                            self.con.rollback()
+                            print("Failed to record transaction")
                     else:
+                        self.con.rollback() 
                         print("Payment failed")
-                else:
-                    print("Invalid PIN")
-            else:
-                print("Account Number Not Found")
-        else:
-            print("Invalid Account Number")
+            except mysql.connector.Error as e:
+                self.con.rollback() 
+                print(f"An error occurred: {e}")
 
     def account_to_account(self):
-        self.am.getAccID()
-        from_acc = input("Enter Sender Account Number: ")
-        if self.am.checkAccount(from_acc):
-            if from_acc in self.am.hsacc:
-                self.pin = self.am.checkPIN()
-                if self.am.hsacc[from_acc] == self.pin:
-                    to_acc = input("Enter Receiver Account Number: ")
-                    if self.am.checkAccount(to_acc):
-                        if to_acc != from_acc:
-                            if to_acc in self.am.hsacc:
-                                print("Set Amount to Transfer")
-                                self.amount = self.am.checkBalance()
-                                from_balance = self.check_for_withdraw(from_acc)
-                                to_balance = self.check_for_withdraw(to_acc)
-                                if from_balance >= self.amount:
-                                    new_from_balance = from_balance - self.amount
-                                    sql = "UPDATE account SET Balance=%s WHERE accno=%s"
-                                    self.ps = self.con.cursor()
-                                    self.ps.execute(sql, (new_from_balance, from_acc))
+        from_acc = self.login()
+        if from_acc:
+            to_acc = input("Enter Receiver Account Number: ")
+            if self.am.check_account(to_acc):
+                if to_acc != from_acc:
+                    self.cursor.execute("SELECT Balance FROM account WHERE accno = %s", (to_acc,))
+                    to_account = self.cursor.fetchone()
+                    if to_account:
+                        print("Set Amount to Transfer")
+                        self.amount = self.am.check_balance()
+                        self.cursor.execute("SELECT Balance FROM account WHERE accno = %s", (from_acc,))
+                        from_account = self.cursor.fetchone()
+                        if from_account['Balance'] >= self.amount:
+                            new_from_balance = from_account['Balance'] - self.amount
+                            sql = "UPDATE account SET Balance=%s WHERE accno=%s"
+                            self.ps = self.con.cursor()
+                            self.ps.execute(sql, (new_from_balance, from_acc))
+                            if self.ps.rowcount > 0:
+                                new_to_balance = to_account['Balance'] + self.amount
+                                sql = "UPDATE account SET Balance=%s WHERE accno=%s"
+                                self.ps.execute(sql, (new_to_balance, to_acc))
+                                if self.ps.rowcount > 0:
+                                    formatted_date = datetime.now().strftime("%Y-%m-%d")
+                                    transaction_id = self.generate_transaction_id()
+                                    sql = "INSERT INTO transaction (transaction_ID, from_accNo, to_accNo, amount, Date) VALUES (%s, %s, %s, %s, %s)"
+                                    self.ps.execute(sql, (transaction_id, from_acc, to_acc, self.amount, formatted_date))
                                     if self.ps.rowcount > 0:
-                                        new_to_balance = to_balance + self.amount
-                                        sql = "UPDATE account SET Balance=%s WHERE accno=%s"
-                                        self.ps.execute(sql, (new_to_balance, to_acc))
-                                        if self.ps.rowcount > 0:
-                                            formatted_date = datetime.now().strftime("%Y-%m-%d")
-                                            self.make_passbook_account_to_account(from_acc, new_from_balance, new_to_balance, formatted_date, "Transfer", "Received", self.amount, to_acc)
-                                            transaction_id = self.generate_transaction_id()
-                                            sql = "INSERT INTO transaction VALUES(%s, %s, %s, %s, %s)"
-                                            self.ps.execute(sql, (transaction_id, from_acc, to_acc, self.amount, formatted_date))
-                                            if self.ps.rowcount > 0:
-                                                print(f"{self.amount} Rs/- Transferred From {from_acc} TO {to_acc} Successfully")
-                                                self.loan.set_data(from_acc)
-                                        else:
-                                            print("Payment failed")
+                                        self.con.commit() 
+                                        print(f"{self.amount} Rs/- Transferred From {from_acc} TO {to_acc} Successfully")
+                                        self.loan.set_data(from_acc)
                                     else:
-                                        print("Payment failed")
+                                        self.con.rollback() 
+                                        print("Failed to record transaction")
                                 else:
-                                    print("Insufficient Balance to Transfer")
-                            else:
-                                print("Receiver Account Number Not Found")
+                                    self.con.rollback() 
+                                    print("Payment failed")
                         else:
-                            print("Receiver and Sender Account Cannot Be The Same")
+                            print("Insufficient Balance to Transfer")
                     else:
-                        print("Invalid Receiver Account Number")
+                        print("Receiver Account Number Not Found")
                 else:
-                    print("Invalid PIN")
+                    print("Receiver and Sender Account Cannot Be The Same")
             else:
-                print("Account Number Not Found")
-        else:
-            print("Invalid Account Number")
+                print("Invalid Receiver Account Number")
 
     @staticmethod
     def make_passbook(acc_no, balance, date, mode, amount):
@@ -143,12 +167,12 @@ class TransactionManager:
                 fw2.write(f"{amount}_{mode2}_FROM_{from_acc_no}_ON_{date}_Balance: {to_balance}\n")
 
     def check_for_withdraw(self, acc_no):
-        sql = "SELECT * FROM account WHERE accno=%s"
+        sql = "SELECT Balance FROM account WHERE accno=%s"
         self.ps = self.con.cursor()
         self.ps.execute(sql, (acc_no,))
         result = self.ps.fetchone()
         if result:
-            return result[1]  # Assuming balance is at index 1
+            return result['Balance']
         return 0
 
     @staticmethod
@@ -157,14 +181,32 @@ class TransactionManager:
 
     def print_passbook(self):
         try:
-            self.am.getAccID()
             acc = input("Enter Account Number: ")
-            if self.am.checkAccount(acc):
-                if acc in self.am.hsacc:
-                    self.pin = self.am.checkPIN()
-                    if self.am.hsacc[acc] == self.pin:
-                        with open(f"PassBook_For_{acc}.txt", "r") as fr:
-                            print(fr.read())
+            if self.am.check_account(acc):
+                self.cursor.execute("SELECT PIN FROM account WHERE accno = %s", (acc,))
+                account = self.cursor.fetchone()
+                if account:
+                    self.pin = self.am.check_pin()
+                    if account['PIN'] == self.pin:
+                        filename = f"PassBook_For_{acc}.txt"
+                        with open(filename, "w") as f:
+                            f.write(f"Passbook for Account Number: {acc}\n")
+                            f.write("---------------------------------------------------\n")
+                            f.write("Date       | Transaction ID | From Account | To Account | Amount\n")
+                            f.write("---------------------------------------------------\n")
+                            
+                            self.cursor.execute("SELECT * FROM transaction WHERE from_accNo = %s", (acc,))
+                            outgoing_transactions = self.cursor.fetchall()
+                            for transaction in outgoing_transactions:
+                                f.write(f"{transaction['Date']} | {transaction['transaction_ID']} | {transaction['from_accNo']} | {transaction['to_accNo']} | {transaction['amount']}\n")
+                            
+                            self.cursor.execute("SELECT * FROM transaction WHERE to_accNo = %s AND from_accNo != %s", (acc, acc))
+                            incoming_transactions = self.cursor.fetchall()
+                            for transaction in incoming_transactions:
+                                f.write(f"{transaction['Date']} | {transaction['transaction_ID']} | {transaction['from_accNo']} | {transaction['to_accNo']} | +{transaction['amount']}\n")
+                            
+                            f.write("---------------------------------------------------\n")
+                        print(f"Passbook has been saved to {filename}")
                     else:
                         print("Invalid PIN")
                 else:
@@ -172,5 +214,5 @@ class TransactionManager:
             else:
                 print("Invalid Account Number")
         except Exception as e:
-            print("Transaction has not been done yet")
+            print(f"An error occurred: {e}")
 

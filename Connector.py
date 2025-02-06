@@ -7,7 +7,7 @@ class Connector:
         self.host = "localhost"
         self.database = "fakebank"
         self.user = "root"
-        self.password = ""  # Update with your MySQL root password if required
+        self.password = ""  
         self.con = None
 
     def connect(self):

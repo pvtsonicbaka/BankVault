@@ -5,12 +5,10 @@ from CustomerManagement import CustomerManagement
 
 
 class AccountManagement:
-    def __init__(self, customer_management):
+    def __init__(self, customer_management, connection):
         self.customer_management = customer_management
-        self.con = self.connect_to_db()
+        self.con = connection
         self.cursor = self.con.cursor(dictionary=True)
-        self.acc_balance = {}
-        self.hsacc = {}
         self.type = ""
         self.pin = 0
 
@@ -47,23 +45,15 @@ class AccountManagement:
     def check_account(self, accno):
         return accno.isdigit()
 
-    def get_acc_id(self):
-        self.hsacc.clear()
-        self.cursor.execute("SELECT accno, PIN FROM account")
-        for row in self.cursor.fetchall():
-            self.hsacc[row['accno']] = row['PIN']
-
-    def set_balance(self):
-        self.acc_balance.clear()
-        self.cursor.execute("SELECT accno, Balance FROM account")
-        for row in self.cursor.fetchall():
-            self.acc_balance[row['accno']] = row['Balance']
-
     def add_account(self):
         try:
-            self.get_acc_id()
             cid = int(input("Enter ID Number: "))
-            if cid in self.customer_management.hscid:
+            
+            # Check if the customer ID exists in the database
+            self.cursor.execute("SELECT cid FROM customer WHERE cid = %s", (cid,))
+            customer = self.cursor.fetchone()
+            
+            if customer:
                 while True:
                     ch = input("1-Saving \t 2-Current: ")
                     if ch == "1":
@@ -79,7 +69,7 @@ class AccountManagement:
                 pin = self.check_pin()
                 accno = self.generate_unique_account_id()
 
-                sql = "INSERT INTO account (accno, c_id, Balance, Type, PIN) VALUES (%s, %s, %s, %s, %s)"
+                sql = "INSERT INTO account (accno, cid, Balance, Type, PIN) VALUES (%s, %s, %s, %s, %s)"
                 self.cursor.execute(sql, (accno, cid, balance, self.type, pin))
                 self.con.commit()
 
@@ -90,16 +80,17 @@ class AccountManagement:
             else:
                 print("ID Not Found.")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error: {e}")    
 
     def del_account(self):
         try:
-            self.get_acc_id()
             acc = input("Enter Account Number: ")
             if self.check_account(acc):
-                if acc in self.hsacc:
+                self.cursor.execute("SELECT PIN FROM account WHERE accno = %s", (acc,))
+                account = self.cursor.fetchone()
+                if account:
                     pin = self.check_pin()
-                    if self.hsacc[acc] == pin:
+                    if account['PIN'] == pin:
                         sql = "DELETE FROM account WHERE accno = %s AND PIN = %s"
                         self.cursor.execute(sql, (acc, pin))
                         self.con.commit()
@@ -115,12 +106,13 @@ class AccountManagement:
 
     def update_account_pin(self):
         try:
-            self.get_acc_id()
             acc = input("Enter Account Number: ")
             if self.check_account(acc):
-                if acc in self.hsacc:
+                self.cursor.execute("SELECT PIN FROM account WHERE accno = %s", (acc,))
+                account = self.cursor.fetchone()
+                if account:
                     pin = self.check_pin()
-                    if self.hsacc[acc] == pin:
+                    if account['PIN'] == pin:
                         new_pin = self.check_pin()
                         sql = "UPDATE account SET PIN = %s WHERE accno = %s AND PIN = %s"
                         self.cursor.execute(sql, (new_pin, acc, pin))
@@ -137,19 +129,16 @@ class AccountManagement:
 
     def view_balance(self):
         try:
-            self.set_balance()
-            self.get_acc_id()
             accno = input("Enter Account Number: ")
             if self.check_account(accno):
                 pin = self.check_pin()
-                if self.hsacc.get(accno) == pin:
-                    if accno in self.acc_balance:
-                        print(f"Account Number: {accno}")
-                        print(f"Balance: {self.acc_balance[accno]}")
-                    else:
-                        print("Account Number Not Found")
+                self.cursor.execute("SELECT Balance FROM account WHERE accno = %s AND PIN = %s", (accno, pin))
+                account = self.cursor.fetchone()
+                if account:
+                    print(f"Account Number: {accno}")
+                    print(f"Balance: {account['Balance']}")
                 else:
-                    print("Incorrect PIN")
+                    print("Incorrect Account Number or PIN")
             else:
                 print("Invalid Account Number")
         except Exception as e:

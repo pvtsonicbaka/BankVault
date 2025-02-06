@@ -3,8 +3,8 @@ from Connector import Connector
 
 
 class Loan:
-    def __init__(self):
-        self.con = self.connect_to_db()
+    def __init__(self, connection):
+        self.con = connection
         self.id = None
         self.count = None
         self.name = None

@@ -4,17 +4,18 @@ from AccountManagement import AccountManagement
 from TransactionManager import TransactionManager
 from DataStructureImplementation import DataStructureImplementation
 from Loan import Loan
-
+from Connector import Connector
 
 class BankManagementCLI:
-
     def __init__(self):
         print("Initializing Bank Management System...")
-        self.cm = CustomerManagement()
-        self.am = AccountManagement(self.cm)  
-        self.tm = TransactionManager(self.cm)
-        self.dsi = DataStructureImplementation()
-        self.loan = Loan()
+        self.connector = Connector()
+        self.connection = self.connector.get_connection()
+        self.cm = CustomerManagement(self.connection)
+        self.am = AccountManagement(self.cm, self.connection)
+        self.tm = TransactionManager(self.cm, self.connection)
+        self.dsi = DataStructureImplementation(self.connection)
+        self.loan = Loan(self.connection)
         print("Initialization Complete. Welcome to the Bank Management System!")
 
     def main(self):

@@ -1,14 +1,11 @@
 import re
 import mysql.connector
 from mysql.connector import Error
-from Connector import Connector
-
 
 class CustomerManagement:
-    def __init__(self):
+    def __init__(self, connection):
         try:
-            db_connector = Connector()
-            self.con = db_connector.get_connection()
+            self.con = connection
             self.cursor = self.con.cursor(dictionary=True)
             self.hscid = set()
         except AttributeError:
