@@ -3,13 +3,11 @@ import os
 from datetime import datetime
 import mysql.connector
 from AccountManagement import AccountManagement
-from Loan import Loan
 from Connector import Connector
 
 class TransactionManager:
     def __init__(self, customer_management, connection):
         self.am = AccountManagement(customer_management, connection)
-        self.loan = Loan(connection)
         print("Trans")
         self.sc = input
         self.pin = None

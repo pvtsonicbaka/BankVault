@@ -36,7 +36,7 @@ class AccountManagement:
 
     def check_pin(self):
         while True:
-            pin = input("Enter PIN: ")
+            pin = input("Enter PIN := ")
             if len(pin) == 4 and pin.isdigit():
                 return int(pin)
             else:

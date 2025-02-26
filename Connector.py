@@ -5,7 +5,7 @@ from mysql.connector import Error
 class Connector:
     def __init__(self):
         self.host = "localhost"
-        self.database = "fakebank"
+        self.database = "bank"
         self.user = "root"
         self.password = ""  
         self.con = None
@@ -32,7 +32,6 @@ class Connector:
         return self.con
 
 
-# Test your Connector class
 if __name__ == "__main__":
     connector = Connector()
     connection = connector.get_connection()

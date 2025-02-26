@@ -2,9 +2,9 @@ import mysql.connector
 from CustomerManagement import CustomerManagement
 from AccountManagement import AccountManagement
 from TransactionManager import TransactionManager
-from DataStructureImplementation import DataStructureImplementation
-from Loan import Loan
 from Connector import Connector
+
+
 
 class BankManagementCLI:
     def __init__(self):
@@ -14,8 +14,7 @@ class BankManagementCLI:
         self.cm = CustomerManagement(self.connection)
         self.am = AccountManagement(self.cm, self.connection)
         self.tm = TransactionManager(self.cm, self.connection)
-        self.dsi = DataStructureImplementation(self.connection)
-        self.loan = Loan(self.connection)
+        # self.dsi = DataStructureImplementation(self.connection)
         print("Initialization Complete. Welcome to the Bank Management System!")
 
     def main(self):
@@ -33,10 +32,7 @@ class BankManagementCLI:
             print("9 : Account to Account Transfer")
             print("10 : See Balance")
             print("11 : Retrieve Passbook")
-            print("12 : Transaction History")
-            print("13 : Check Credit Score and Loan Status")
-            print("14 : Generate List of Top Loan Approvals")
-            print("15 : Exit")
+            print("12 : Exit")
             print("--------------------------------------------")
             choice = input("Enter your choice: ").strip()
 
@@ -63,19 +59,13 @@ class BankManagementCLI:
                     self.am.view_balance()
                 elif choice == "11":
                     self.tm.print_passbook()
+                
                 elif choice == "12":
-                    acc_no = input("Enter Account Number: ").strip()
-                    if self.am.check_account(acc_no):
-                        self.dsi.display_transaction_history(acc_no)
-                    else:
-                        print("Invalid Account Number")
-                elif choice == "13":
-                    self.loan.get_status()
-                elif choice == "14":
-                    self.dsi.generate_loan_list()
-                elif choice == "15":
                     print("Thank you for using the Bank Management System. Goodbye!")
                     break
+                elif choice=="99":
+                    pass
+                    ##########################
                 else:
                     print("Invalid choice. Please select a valid option.")
             except Exception as e:
