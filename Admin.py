@@ -5,6 +5,16 @@ class Admin:
         self.con = connection
         self.cursor = self.con.cursor(dictionary=True)
 
+    def verify_credentials(self, admin_id, password):
+        try:
+            sql = "SELECT * FROM admin WHERE id = %s AND password = %s"
+            self.cursor.execute(sql, (admin_id, password))
+            admin = self.cursor.fetchone()
+            return admin is not None
+        except mysql.connector.Error as e:
+            print(f"Error in verifying credentials: {e}")
+            return False
+
     def view_all_customers(self):
         try:
             self.cursor.execute("SELECT * FROM customer")
@@ -35,4 +45,12 @@ class Admin:
         except mysql.connector.Error as e:
             print(f"Error in retrieving transactions: {e}")
 
-    
+    def view_all_loans(self):
+        try:
+            self.cursor.execute("SELECT * FROM loan")
+            loans = self.cursor.fetchall()
+            print("All Loans:")
+            for loan in loans:
+                print(loan)
+        except mysql.connector.Error as e:
+            print(f"Error in retrieving loans: {e}")

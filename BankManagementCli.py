@@ -72,13 +72,15 @@ class BankManagementCLI:
                 print("Please try again.")
 
     def admin_menu(self):
-        while True:
+        admin_id=input("enter admin_id :")
+        password=input("enter password :")
+        while True and self.admin.verify_credentials(admin_id,password):
             print("\n--------------------------------------------")
             print("Admin Functions Menu:")
             print("1 : View All Customers")
             print("2 : View All Accounts")
             print("3 : View All Transactions")
-            print("5 : Back to Main Menu")
+            print("4 : Back to Main Menu")
             print("--------------------------------------------")
             choice = input("Enter your choice: ").strip()
 
@@ -89,14 +91,16 @@ class BankManagementCLI:
                     self.admin.view_all_accounts()
                 elif choice == "3":
                     self.admin.view_all_transactions()
-               
-                elif choice == "5":
+                elif choice == "4":
                     break
                 else:
                     print("Invalid choice. Please select a valid option.")
             except Exception as e:
                 print(f"An error occurred: {e}")
                 print("Please try again.")
-
+        else:
+            print()
+            print("::::::::::::::::::::::invalid credentials:::::::::::::::::::::::::")
 if __name__ == "__main__":
     BankManagementCLI().main()
+
