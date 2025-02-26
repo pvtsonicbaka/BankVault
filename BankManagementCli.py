@@ -2,6 +2,7 @@ import mysql.connector
 from CustomerManagement import CustomerManagement
 from AccountManagement import AccountManagement
 from TransactionManager import TransactionManager
+from Admin import Admin
 from Connector import Connector
 
 
@@ -14,7 +15,7 @@ class BankManagementCLI:
         self.cm = CustomerManagement(self.connection)
         self.am = AccountManagement(self.cm, self.connection)
         self.tm = TransactionManager(self.cm, self.connection)
-        # self.dsi = DataStructureImplementation(self.connection)
+        self.admin = Admin(self.connection)
         print("Initialization Complete. Welcome to the Bank Management System!")
 
     def main(self):
@@ -59,13 +60,38 @@ class BankManagementCLI:
                     self.am.view_balance()
                 elif choice == "11":
                     self.tm.print_passbook()
-                
                 elif choice == "12":
                     print("Thank you for using the Bank Management System. Goodbye!")
                     break
-                elif choice=="99":
-                    pass
-                    ##########################
+                elif choice == "99":
+                    self.admin_menu()
+                else:
+                    print("Invalid choice. Please select a valid option.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+                print("Please try again.")
+
+    def admin_menu(self):
+        while True:
+            print("\n--------------------------------------------")
+            print("Admin Functions Menu:")
+            print("1 : View All Customers")
+            print("2 : View All Accounts")
+            print("3 : View All Transactions")
+            print("5 : Back to Main Menu")
+            print("--------------------------------------------")
+            choice = input("Enter your choice: ").strip()
+
+            try:
+                if choice == "1":
+                    self.admin.view_all_customers()
+                elif choice == "2":
+                    self.admin.view_all_accounts()
+                elif choice == "3":
+                    self.admin.view_all_transactions()
+               
+                elif choice == "5":
+                    break
                 else:
                     print("Invalid choice. Please select a valid option.")
             except Exception as e:
